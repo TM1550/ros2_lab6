@@ -1,0 +1,438 @@
+<?xml version="1.0"?>
+<robot name="hedgehog_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Включение Gazebo конфигурации -->
+  <xacro:include filename="robot.gazebo.xacro"/>
+
+  <!-- Основные параметры робота-ежика -->
+  <xacro:property name="body_radius" value="0.25"/>
+  <xacro:property name="body_height" value="0.2"/>
+  <xacro:property name="wheel_radius" value="0.08"/>
+  <xacro:property name="wheel_width" value="0.04"/>
+  <xacro:property name="spike_length" value="0.15"/>
+  <xacro:property name="eye_radius" value="0.02"/>
+  <xacro:property name="ball_radius" value="0.05"/>
+  <xacro:property name="M_PI" value="3.1415926535897931"/>
+
+  <material name="brown">
+    <color rgba="0.6 0.4 0.2 1.0"/>
+  </material>
+
+  <material name="dark_brown">
+    <color rgba="0.4 0.2 0.1 1.0"/>
+  </material>
+
+  <material name="dark_gray">
+    <color rgba="0.2 0.2 0.2 1.0"/>
+  </material>
+
+  <material name="red">
+    <color rgba="0.8 0.1 0.1 1.0"/>
+  </material>
+
+  <material name="light_brown">
+    <color rgba="0.7 0.5 0.3 1.0"/>
+  </material>
+
+  <material name="black">
+    <color rgba="0 0 0 1.0"/>
+  </material>
+
+  <material name="gray">
+    <color rgba="0.5 0.5 0.5 1.0"/>
+  </material>
+
+  <material name="transparent">
+    <color rgba="0 0 0 0.0"/>
+  </material>
+
+  <!-- Основное тело (сфера) -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <sphere radius="${body_radius}"/>
+      </geometry>
+      <material name="brown"/>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="${body_radius}"/>
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>0.8</mu>
+            <mu2>0.8</mu2>
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+    <inertial>
+      <mass value="3.0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia 
+        ixx="${2.0/5.0 * 3.0 * body_radius * body_radius}" 
+        ixy="0" 
+        ixz="0" 
+        iyy="${2.0/5.0 * 3.0 * body_radius * body_radius}" 
+        iyz="0" 
+        izz="${2.0/5.0 * 3.0 * body_radius * body_radius}"/>
+    </inertial>
+  </link>
+
+  <!-- Макрос для сферического колеса -->
+  <xacro:macro name="spherical_wheel" params="name x y z">
+    <link name="${name}_wheel">
+      <visual>
+        <geometry>
+          <sphere radius="${ball_radius}"/>
+        </geometry>
+        <material name="dark_gray"/>
+      </visual>
+      <collision>
+        <geometry>
+          <sphere radius="${ball_radius}"/>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.01</mu>
+              <mu2>0.01</mu2>
+              <slip1>0.1</slip1>
+              <slip2>0.1</slip2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <inertial>
+        <mass value="0.2"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia 
+          ixx="${2.0/5.0 * 0.2 * ball_radius * ball_radius}" 
+          ixy="0" 
+          ixz="0" 
+          iyy="${2.0/5.0 * 0.2 * ball_radius * ball_radius}" 
+          iyz="0" 
+          izz="${2.0/5.0 * 0.2 * ball_radius * ball_radius}"/>
+      </inertial>
+    </link>
+
+    <!-- Базовая связка для вращения -->
+    <link name="${name}_base">
+      <visual>
+        <geometry>
+          <sphere radius="0.01"/>
+        </geometry>
+        <material name="transparent"/>
+      </visual>
+      <inertial>
+        <mass value="0.001"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia ixx="0.000001" ixy="0" ixz="0" iyy="0.000001" iyz="0" izz="0.000001"/>
+      </inertial>
+    </link>
+
+    <!-- Соединение базы с телом -->
+    <joint name="${name}_base_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}_base"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Вращательное соединение для колеса -->
+    <joint name="${name}_wheel_joint" type="continuous">
+      <parent link="${name}_base"/>
+      <child link="${name}_wheel"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <axis xyz="1 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- Создаем 4 сферических колеса -->
+  <xacro:property name="wheel_distance" value="${body_radius * 0.8}"/>
+  
+  <xacro:spherical_wheel name="front_right" 
+    x="${wheel_distance * 0.707}" 
+    y="${-wheel_distance * 0.707}" 
+    z="${-body_radius + ball_radius}"/>
+  
+  <xacro:spherical_wheel name="front_left" 
+    x="${wheel_distance * 0.707}" 
+    y="${wheel_distance * 0.707}" 
+    z="${-body_radius + ball_radius}"/>
+  
+  <xacro:spherical_wheel name="rear_right" 
+    x="${-wheel_distance * 0.707}" 
+    y="${-wheel_distance * 0.707}" 
+    z="${-body_radius + ball_radius}"/>
+  
+  <xacro:spherical_wheel name="rear_left" 
+    x="${-wheel_distance * 0.707}" 
+    y="${wheel_distance * 0.707}" 
+    z="${-body_radius + ball_radius}"/>
+
+  <!-- Ведущие колеса -->
+  <link name="drive_wheel_left">
+    <visual>
+      <origin xyz="0 0 0" rpy="${M_PI/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${M_PI/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>2.0</mu>
+            <mu2>2.0</mu2>
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia 
+        ixx="${0.5*(3*wheel_radius*wheel_radius + wheel_width*wheel_width)/12}"
+        ixy="0"
+        ixz="0"
+        iyy="${0.5*wheel_radius*wheel_radius/2}"
+        iyz="0"
+        izz="${0.5*(3*wheel_radius*wheel_radius + wheel_width*wheel_width)/12}"/>
+    </inertial>
+  </link>
+
+  <link name="drive_wheel_right">
+    <visual>
+      <origin xyz="0 0 0" rpy="${M_PI/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${M_PI/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+      <surface>
+        <friction>
+          <ode>
+            <mu>2.0</mu>
+            <mu2>2.0</mu2>
+          </ode>
+        </friction>
+      </surface>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia 
+        ixx="${0.5*(3*wheel_radius*wheel_radius + wheel_width*wheel_width)/12}"
+        ixy="0"
+        ixz="0"
+        iyy="${0.5*wheel_radius*wheel_radius/2}"
+        iyz="0"
+        izz="${0.5*(3*wheel_radius*wheel_radius + wheel_width*wheel_width)/12}"/>
+    </inertial>
+  </link>
+
+  <!-- Соединения для ведущих колес -->
+  <joint name="drive_wheel_left_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="drive_wheel_left"/>
+    <origin xyz="0 ${body_radius*1.2} ${-body_radius + wheel_radius}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <joint name="drive_wheel_right_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="drive_wheel_right"/>
+    <origin xyz="0 ${-body_radius*1.2} ${-body_radius + wheel_radius}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <!-- Голова -->
+  <link name="head_link">
+    <visual>
+      <geometry>
+        <sphere radius="${body_radius*0.4}"/>
+      </geometry>
+      <material name="light_brown"/>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="${body_radius*0.4}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <joint name="head_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="head_link"/>
+    <origin xyz="${body_radius*0.8} 0 ${body_radius*0.1}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Глаза -->
+  <link name="left_eye_link">
+    <visual>
+      <geometry>
+        <sphere radius="${eye_radius}"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+  </link>
+
+  <joint name="left_eye_joint" type="fixed">
+    <parent link="head_link"/>
+    <child link="left_eye_link"/>
+    <origin xyz="0 ${body_radius*0.15} ${body_radius*0.15}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="right_eye_link">
+    <visual>
+      <geometry>
+        <sphere radius="${eye_radius}"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+    <inertial>
+      <mass value="0.01"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+  </link>
+
+  <joint name="right_eye_joint" type="fixed">
+    <parent link="head_link"/>
+    <child link="right_eye_link"/>
+    <origin xyz="0 ${-body_radius*0.15} ${body_radius*0.15}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Иголки -->
+  <xacro:macro name="spike" params="name angle">
+    <link name="${name}">
+      <visual>
+        <geometry>
+          <cylinder radius="0.008" length="${spike_length}"/>
+        </geometry>
+        <material name="dark_brown"/>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder radius="0.008" length="${spike_length}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.02"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+      </inertial>
+    </link>
+    
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}"/>
+      <origin xyz="${body_radius*cos(angle)} ${body_radius*sin(angle)} ${body_radius*0.3}" 
+              rpy="0.4 0 ${angle}"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:spike name="spike_0" angle="0"/>
+  <xacro:spike name="spike_1" angle="${M_PI/4}"/>
+  <xacro:spike name="spike_2" angle="${M_PI/2}"/>
+  <xacro:spike name="spike_3" angle="${3*M_PI/4}"/>
+  <xacro:spike name="spike_4" angle="${M_PI}"/>
+  <xacro:spike name="spike_5" angle="${5*M_PI/4}"/>
+  <xacro:spike name="spike_6" angle="${3*M_PI/2}"/>
+  <xacro:spike name="spike_7" angle="${7*M_PI/4}"/>
+
+  <!-- Хвост -->
+  <link name="tail_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.015" length="0.1"/>
+      </geometry>
+      <material name="dark_brown"/>
+    </visual>
+    <inertial>
+      <mass value="0.02"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <joint name="tail_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="tail_link"/>
+    <origin xyz="${-body_radius*0.8} 0 ${body_radius*0.2}" rpy="0.5 0 0"/>
+  </joint>
+
+  <!-- Камера глубины - ПЕРЕМЕЩЕНА НАВЕРХ РОБОТА -->
+  <link name="depth_frame">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02 0.12 0.02"/>
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.001"/>
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" 
+               iyy="0.0001" iyz="0.0" 
+               izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <!-- Камера теперь наверху, смотрит вперед -->
+  <joint name="depth_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="depth_frame"/>
+    <!-- Расположение: сверху робота, немного вперед, смотрит вперед -->
+    <origin xyz="${body_radius*0.3} 0 ${body_radius*0.9}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- IMU - ПЕРЕМЕЩЕН В ЦЕНТР МАСС -->
+  <link name="imu_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.03 0.03 0.03"/> <!-- Уменьшен для лучшего размещения -->
+      </geometry>
+      <material name="gray"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.001"/>
+      <inertia ixx="0.000166667" ixy="0.0" ixz="0.0" 
+              iyy="0.000166667" iyz="0.0" 
+              izz="0.000166667"/>
+    </inertial>
+  </link>
+
+  <!-- IMU теперь в центре масс (центре робота) -->
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <!-- Расположение: в центре робота для точных измерений -->
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+</robot>
